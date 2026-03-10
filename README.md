@@ -22,8 +22,8 @@ Ariadne Thread helps you structure codebases so AI agents can understand and saf
 ## 4-Level Index Architecture
 
 ```
-L0  Project Root    AGENTS.md (~80 lines)
-│                   Project map, navigation table, build commands, cross-cutting patterns
+L0  Project Root    AGENTS.md (80–150 lines, prefer brevity)
+│                   Project map, navigation table, build commands, cross-cutting patterns, Agent Workflow
 │
 L1  Module Index   INDEX.md per directory (~50 lines)
 │                   Purpose, public API, dependencies, contracts, task routing, modification risk, test mapping
@@ -40,9 +40,12 @@ AI agents start at L0 and drill down only as needed.
 ## Features
 
 - **Language-agnostic**: TypeScript, C++, Python, Go, Rust, Java, and more
+- **Generalized**: Adapts to Web apps, libraries, monorepos — principles over fixed layouts
 - **Progressive disclosure**: Reveal only what's needed when it's needed, reducing token consumption
 - **Dual documentation tiers**: Tier A (AI runtime index) and Tier B (human docs) maintained separately
 - **Module design principles**: Single responsibility, clear dependency direction, small focused files
+
+**When NOT to use**: Minimal single-file projects, quick prototypes, or &lt;5 source files — a lightweight AGENTS.md may suffice.
 
 ## Use Cases
 
@@ -66,13 +69,15 @@ Use this Skill when the user mentions:
 
 ```
 ariadne-thread/
-├── SKILL.md                    # Full skill guide (4-level index, language adaptation, workflows)
+├── SKILL.md                    # Main skill guide (4-level index, when to use, workflows)
 ├── README.md                   # This file (English)
 ├── README.zh-CN.md             # Chinese version
 └── references/
     ├── index-templates.md      # Copy-paste L0/L1/L2 templates
     ├── naming-api-conventions.md # Naming and API conventions
-    └── doc-standards.md        # Documentation standards and ADR format
+    ├── doc-standards.md        # Documentation standards and ADR format
+    ├── language-adaptation.md  # Per-language conventions (C++, TS, Python, Go, Rust, Java)
+    └── index-maintenance.md   # Tier A/B maintenance triggers
 ```
 
 ## Quick Start

@@ -27,6 +27,15 @@ These apply regardless of programming language:
 | Java | `PascalCase.java` | lowercase | `InvoiceCalculator.java` |
 | C# | `PascalCase.cs` | `PascalCase/` | `InvoiceCalculator.cs` |
 
+### Voice Coding Considerations
+
+When identifiers may be spoken (e.g. "open user-profile-view", "go to authenticate dot ts"):
+
+- **Prefer kebab-case** for files and directories: `user-profile-view` — each word pronounced separately; easier than `userProfileView` or `user_profile_view`.
+- **Avoid similar-sounding neighbors**: `auth_guard` vs `oath_guard`, `rate` vs `wait`, `add` vs `ad` — can confuse speech-to-text.
+- **Keep path segments short**: `auth` better than `authentication` at the end of a path; prefer pronounceable, spellable names.
+- **Avoid long unbroken identifiers**: `calculate_invoice_total_with_discount` — consider `calc_invoice_total` or splitting into shorter names for verbal reference.
+
 ### Forbidden Names (All Languages)
 
 These names indicate unclear responsibility — split into specific files:

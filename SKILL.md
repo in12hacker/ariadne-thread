@@ -7,7 +7,18 @@ description: Guide creation of AI-friendly project structures with progressive d
 
 Create codebases that AI agents can navigate efficiently through progressive disclosure — revealing only what's needed, when it's needed.
 
-**Language-agnostic**: applies to any language (TypeScript, C++, Python, Go, Rust, Java, etc.). See the [Language Adaptation](#language-adaptation) section for language-specific mappings.
+## When to Use
+
+Apply this skill when the user:
+- Starts a new project and wants AI-friendly structure
+- Restructures or indexes an existing codebase
+- Adds project navigation (AGENTS.md, INDEX.md, llms.txt)
+- Designs module boundaries and dependencies
+- Mentions: "AI-friendly project", "progressive disclosure", "project index", "codebase navigation", or "ariadne"
+
+**Language-agnostic**: applies to any language. See [language-adaptation.md](references/language-adaptation.md) for per-language mappings.
+
+**When NOT to apply**: Minimal single-file projects, quick prototypes, or codebases where indexing overhead outweighs benefit. Skip full L1/L2 when the project has fewer than ~5 source files; a lightweight AGENTS.md may suffice.
 
 ## Core Philosophy
 
@@ -20,7 +31,7 @@ Two optimization targets:
 ## The 4-Level Index Architecture
 
 ```
-L0  PROJECT ROOT     ← AGENTS.md (~80 lines)
+L0  PROJECT ROOT     ← AGENTS.md (80–150 lines, prefer brevity)
 │                       Project map, navigation table, build commands, cross-cutting patterns
 │
 L1  MODULE INDEX     ← Each directory gets an INDEX.md (~50 lines)
@@ -47,32 +58,40 @@ Create an `AGENTS.md` at the project root with:
 5. **Code conventions summary**
 6. **Architectural constraints** — illegal dependency directions, global invariants
 7. **Cross-cutting behavior patterns** — error handling, logging, concurrency model
+8. **Agent Workflow** — at the **end** of the file (Checklist-at-END format): mandatory steps before editing — locate module via Quick Navigation, open `INDEX.md` and check Dependents before modifying public API, confirm Modification Risk for breaking changes, run Tests before finishing
+9. **Index exclusions** — Optional `.cursorignore` (same syntax as `.gitignore`) to exclude build artifacts, dependencies, generated code; common examples: `node_modules/`, `dist/`, `vendor/`, `__pycache__/`, `target/`, `*.generated.*` — adapt to your ecosystem
 
 The cross-cutting patterns section is critical: it prevents the AI from reading 3-4 existing files just to infer "how do we handle errors here?". One 30-line declaration replaces ~1500 tokens of pattern inference.
+
+**Navigation priority**: Prefer navigating via `INDEX.md` Dependents and Dependencies over semantic/keyword search. Structural dependency paths surface architecturally critical files that retrieval often misses. When modifying a module's public API, always consult its Dependents list first to assess blast radius.
+
+**Information placement (Lost in the Middle)**: LLMs attend more to context start and end. Place high-priority content (Build, Quick Navigation, Agent Workflow) at the beginning or end of AGENTS.md; keep secondary sections toward the middle.
 
 ```markdown
 ## Architectural Constraints
 
-- Dependency direction: ui/ → core/ → infra/ (never reverse)
-- All external calls (HTTP, DB, cache) must go through `src/infra/`
-- No direct file I/O outside `src/infra/storage/`
+<!-- Typical Web app layers; adapt to project: app/, packages/, layers/, etc. -->
+- Dependency direction: presentation → domain → infrastructure (never reverse)
+  Example: ui/ → core/ → infra/ — or app/features/, packages/core/, etc.
+- All external calls (HTTP, DB, cache) go through infrastructure layer — e.g. `src/infra/` or `[project-path]/infra/`
+- No direct file I/O outside designated storage module
 
 ## Cross-Cutting Patterns
 
 ### Error Handling
-- Throw typed errors (e.g., AuthError, ValidationError), never raw strings
+- Throw typed errors (e.g. [ErrorType], [ValidationError]), never raw strings
 - Log errors before re-throwing across module boundaries
 - Public functions document all throwable error types in file header
 
 ### Logging
-- Use structured logger from `src/shared/logger`
-- Include request_id in all log entries
+- Use structured logger from [project logger location]
+- Include [trace_id or request_id] in all log entries
 - Levels: ERROR (failures), WARN (degradation), INFO (operations)
 
 ### Concurrency (if applicable)
-- Module `core/` is single-threaded; no locks needed
-- Module `infra/cache/` is thread-safe; uses internal mutex
-- Lock ordering: always acquire in alphabetical order by resource name
+- Document thread-safety per module (single-threaded vs thread-safe)
+- Define lock ordering strategy (e.g. by resource name, by hierarchy) and record in AGENTS.md
+- Apply consistently to avoid deadlocks
 ```
 
 For the full AGENTS.md template, see [index-templates.md](references/index-templates.md).
@@ -80,6 +99,8 @@ For the full AGENTS.md template, see [index-templates.md](references/index-templ
 ### L1: Module Index
 
 Every module directory gets an `INDEX.md` — any directory that has a public API, a barrel/`__init__`, or 3+ source files. This is the **most information-dense layer** — it must answer not just "what does this module do?" but also "who depends on it?", "what will break if I change it?", and "which file should I edit for task X?".
+
+*Example below uses domain `auth`; replace with your domain — billing, reporting, catalog, etc.*
 
 ```markdown
 # Module: auth
@@ -98,10 +119,14 @@ Status: stable | Fan-in: 5 | Fan-out: 2
 
 ## Dependencies (Fan-out: 2)
 
+<!-- Use repo-root-relative paths. Optional edge type: [imports] | [inherits] | [instantiates] -->
+
 - `src/infra/db` — user record lookups
 - `src/shared/crypto` — password hashing
 
 ## Dependents (Fan-in: 5)
+
+<!-- Prefer structural navigation via this list over semantic search. Use repo-root-relative paths. -->
 
 - `src/api/routes/user` → authenticate()
 - `src/api/middleware/auth-guard` → authorize()
@@ -136,6 +161,8 @@ Status: stable | Fan-in: 5 | Fan-out: 2
 - Critical: auth_flow_test (must pass before merge)
 - Untested: token_refresh() — extra caution when modifying
 ```
+
+**Voice Coding**: L1 `Task Routing` supports "say task → get file path" — map natural-language tasks to specific files for hands-free navigation.
 
 **Why each section matters for AI:**
 
@@ -200,6 +227,9 @@ Contract annotation reference:
 | `@sideeffect` | What state changes beyond return value | DB writes, events, cache invalidation |
 | `@threadsafe` | Concurrency guarantee | Multi-threaded systems |
 | `@performance` | Latency/throughput constraints | Hot-path functions |
+| `@lines` / `@range` | Key line ranges for large files | When file exceeds ~300 LOC; e.g. `@lines 45-89 main logic` |
+
+**Path convention**: In L1, use repo-root-relative paths (e.g. `src/auth/authenticate.ts`) — avoid `./`, `../` for clarity and Voice Coding compatibility.
 
 See [index-templates.md](references/index-templates.md) for all language templates.
 
@@ -234,14 +264,15 @@ auto resolved = resolve_parent_first(node);
 
 ### Clear Dependency Direction
 
+Typical layering (example; adapt names to your project — e.g. `app/`, `packages/`, `layers/`):
+
 ```
-ui/ → core/ → infra/
-         ↘ shared/ ↙
+presentation/ → domain/ → infrastructure/
+         ↘ shared/ (cross-cutting) ↙
 ```
 
-- Depend inward (UI → Core → Infra), never outward
-- `shared/` is the only cross-cutting package
-- Document this in AGENTS.md Architectural Constraints
+- Depend inward (presentation → domain → infrastructure), never outward
+- Document the actual direction in AGENTS.md Architectural Constraints
 
 ### Small, Focused Files
 
@@ -260,7 +291,7 @@ The index structure works for both, but libraries differ in several key areas:
 | **Build & Test** | Has build + run commands | May have no build step (header-only); tests often in separate projects |
 | **Public API** | Internal modules calling each other | Consumers are external; public API = exported headers / package interface |
 | **Dependents (Fan-in)** | Other modules in the same project | Primarily external consumers (note "External: N/A — library" in Dependents) |
-| **Dependency direction** | `ui/ → core/ → infra/` | Typically flat or layered by abstraction (e.g., `core/ ← filtering/ ← testing/`) |
+| **Dependency direction** | presentation → domain → infra (example) | Libraries: typically flat or layered by abstraction (e.g., core ← filtering ← testing) |
 | **File size targets** | Strict (you control the code) | Guideline only for upstream/third-party code you do not own |
 
 **Header-only libraries** (C++): no `include/` + `src/` split — all code is in headers. The entry header (e.g., `library.hpp`) acts as the barrel/`__init__`. There is no independent build step; document how consumers include and link.
@@ -322,16 +353,16 @@ Not all documentation serves the same audience or requires the same update frequ
 
 ## Project Documentation (Tier B)
 
-Human-facing documentation follows the same progressive disclosure structure, but is maintained at iteration boundaries rather than in real-time:
+Human-facing documentation follows the same progressive disclosure structure, but is maintained at iteration boundaries rather than in real-time. Common structure (adapt to project; ADR is optional — omit `adr/` if you don't use ADRs):
 
 ```
 docs/
 ├── README.md              # What is this, how to start (< 1 page)
 ├── architecture.md        # System overview, component diagram
-├── adr/                   # Architecture Decision Records
+├── adr/                   # Architecture Decision Records (optional)
 │   ├── INDEX.md           # ADR list with one-line summaries
 │   └── 001-database.md
-└── api/                   # API reference
+└── api/                   # API reference (or equivalent)
     ├── INDEX.md           # Endpoint / header summary table
     └── users.md           # Detailed docs
 ```
@@ -347,87 +378,11 @@ For doc templates and ADR format, see [doc-standards.md](references/doc-standard
 
 ## Language Adaptation
 
-The 4-level index and design principles are universal. Below is how they map to specific language ecosystems:
-
-### C / C++
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `include/` + `src/` + `tests/` (compiled); or flat `lib/` (header-only) |
-| File naming | `snake_case.h` / `snake_case.cpp` (or `.hpp`/`.cc` per project) |
-| Module boundary | Namespace + directory; public API = public headers in `include/` (or entry header for header-only) |
-| Build system | CMake (`CMakeLists.txt`), MSBuild (`.sln`/`.vcxproj`), Makefile, or Meson |
-| Package manager | vcpkg, Conan, or FetchContent |
-| L0 Build commands | CMake: `cmake -B build && cmake --build build && ctest --test-dir build`; MSBuild: `msbuild project.sln /p:Configuration=Release /p:Platform=x64` |
-| L2 Contract annotations | Doxygen `@pre`, `@post`, `@throws`, `@threadsafe` |
-| Include order | system → third-party → project (with blank line separators) |
-| Header guards | `#pragma once` (or `#ifndef PROJECT_MODULE_FILE_H`) |
-| Naming | `snake_case` functions, `PascalCase` classes, `kCamelCase` or `SCREAMING_SNAKE` constants |
-
-**Header-only libraries**: All code lives in headers (no `.cpp` files). The "public API" is the entry header (e.g., `library.hpp`) that includes everything. There is no build step for the library itself — consumers include the header and link required system libraries. Tests and examples typically live in separate projects or sibling directories. When indexing, treat the main header directory as a single module with logical sub-groups in `INDEX.md`.
-
-### TypeScript / JavaScript
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `src/` flat or by domain; tests co-located as `*.test.ts` |
-| File naming | `kebab-case.ts` |
-| Module boundary | Directory + barrel `index.ts` (thin, < 20 lines) |
-| Build system | `tsc`, esbuild, Vite |
-| Package manager | npm, pnpm, bun |
-| L2 Contract annotations | JSDoc `@pre`, `@post`, `@throws`, `@sideeffect` |
-| Import order | builtins → packages → internal absolute → relative |
-| Naming | `camelCase` functions, `PascalCase` classes, `SCREAMING_SNAKE` constants |
-
-### Python
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `src/[package]/` + `tests/`; `__init__.py` for packages |
-| File naming | `snake_case.py` |
-| Module boundary | Package directory + `__init__.py` (public re-exports) |
-| Build system | pip, uv, Poetry, setuptools |
-| L2 Contract annotations | Docstring sections: `Pre:`, `Post:`, `Raises:`, `Side Effects:` |
-| Import order | stdlib → third-party → local (isort / Ruff) |
-| Naming | `snake_case` functions, `PascalCase` classes, `UPPER_CASE` constants |
-
-### Go
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `cmd/` (entry points) + `internal/` (private) + `pkg/` (public) |
-| File naming | `snake_case.go` |
-| Module boundary | Package directory; exported = capitalized |
-| Build system | `go build`, `go test` |
-| L2 Contract annotations | Doc comments with `Precondition:`, `Returns:`, `Errors:` |
-| Import order | stdlib → third-party → internal (goimports) |
-| Naming | `camelCase`/`PascalCase` (exported), no underscores |
-
-### Rust
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `src/` with `lib.rs` / `main.rs`; modules as dirs with `mod.rs` |
-| File naming | `snake_case.rs` |
-| Module boundary | `mod` + `pub` visibility |
-| Build system | Cargo (`cargo build`, `cargo test`) |
-| L2 Contract annotations | Doc comments with `# Panics`, `# Errors`, `# Safety` sections |
-| Naming | `snake_case` functions, `PascalCase` types, `SCREAMING_SNAKE` constants |
-
-### Java / Kotlin
-
-| Aspect | Convention |
-|--------|-----------|
-| Directory layout | `src/main/java/...` + `src/test/java/...` (Maven/Gradle) |
-| File naming | `PascalCase.java` (one public class per file) |
-| Module boundary | Package + module-info.java (Java 9+) |
-| Build system | Maven (`mvn`), Gradle (`gradle`) |
-| L2 Contract annotations | Javadoc `@throws`, `@apiNote`, custom `@pre`/`@post` tags |
-| Naming | `camelCase` methods, `PascalCase` classes, `SCREAMING_SNAKE` constants |
+The 4-level index and design principles are universal. Per-language conventions (C++, TypeScript, Python, Go, Rust, Java/Kotlin) — directory layout, file naming, L2 contract annotations, build commands — are in [language-adaptation.md](references/language-adaptation.md). Load that file when indexing a project in a specific language.
 
 ## Workflow: New Project
 
-1. **Identify language ecosystem** — check Language Adaptation table
+1. **Identify language ecosystem** — see [language-adaptation.md](references/language-adaptation.md)
 2. **Design the directory map** before writing code
 3. **Create AGENTS.md** — project table of contents + cross-cutting patterns + AI Agent Instructions
 4. **Create module INDEX.md** as you create each directory (include all sections)
@@ -459,47 +414,12 @@ The 4-level index and design principles are universal. Below is how they map to 
 
 ## Index Maintenance
 
-### Tier A: AI Agent Self-Maintenance (Real-time)
-
-**Directive**: Every code modification MUST include atomic updates to the relevant Tier A indexes. A code change is NOT complete until the indexes reflect it.
-
-| Trigger | Required Action |
-|---------|----------------|
-| File added | Add entry to parent `INDEX.md` Files table |
-| File renamed/moved | Update parent `INDEX.md`; update `AGENTS.md` if in navigation table |
-| File deleted | Remove from parent `INDEX.md`; update `AGENTS.md` if in navigation table |
-| Module added | Create `INDEX.md` with all sections; update `AGENTS.md` directory map + navigation |
-| Module removed | Delete `INDEX.md`; update `AGENTS.md` directory map + navigation table |
-| Public API signature changed | Update `INDEX.md`: Public API table, Interface Contract, Modification Risk |
-| New dependency added | Update this module's `INDEX.md` Dependencies (Fan-out count) |
-| New caller of this module | Update this module's `INDEX.md` Dependents (Fan-in count) |
-| Cross-cutting pattern changed | Update `AGENTS.md` Cross-Cutting Patterns section |
-| Test added/removed/renamed | Update `INDEX.md` Tests section |
-| File header contract changed | Ensure L2 header matches actual function signatures and behavior |
-
-**Anti-patterns**:
-- Stale `INDEX.md` → AI navigates to wrong file or misses dependencies
-- Stale Dependents list → AI misses affected callers during refactoring (**most dangerous**)
-- Updating Tier B docs during active development → wasted tokens, lower quality output
-
-### Tier B: Iteration-End Documentation Sync (Batch)
-
-At the end of a development iteration (sprint, milestone, or feature completion), sync Tier B documents from Tier A indexes:
-
-1. **Review changes**: Scan all `INDEX.md` and `AGENTS.md` modifications since last sync
-2. **Update `architecture.md`**: If module structure, dependency graph, or cross-cutting patterns changed
-3. **Create/update ADRs**: For any significant architectural decisions made during the iteration
-4. **Update API docs**: Derive from `INDEX.md` Public API tables and L2 contract headers
-5. **Update `README.md`**: If project scope, build commands, or quick-start steps changed
-6. **Update developer guides**: If workflows or deployment steps changed
-7. **Update `docs/*/INDEX.md`**: Sync doc directory indexes with any new/removed documents
-
-**Tier B documents reference Tier A as source of truth** — prefer links to `INDEX.md` sections over duplicating content. This keeps human docs shorter and reduces staleness risk.
-
-**AI instruction**: When the user requests "documentation sync", "update docs", or "iteration end", execute this Tier B batch workflow. During normal development, ignore Tier B files entirely.
+**Directive**: Every code change MUST include atomic updates to relevant Tier A indexes. See [index-maintenance.md](references/index-maintenance.md) for the full trigger→action table, anti-patterns, and Tier B sync workflow. When the user says "documentation sync" or "iteration end", execute the Tier B batch process.
 
 ## Detailed References
 
-- **Copy-paste index templates**: See [index-templates.md](references/index-templates.md)
-- **Naming + API conventions detail**: See [naming-api-conventions.md](references/naming-api-conventions.md)
-- **Documentation standards + ADR format**: See [doc-standards.md](references/doc-standards.md)
+- **Index templates (L0/L1/L2)**: [index-templates.md](references/index-templates.md)
+- **Naming + API conventions**: [naming-api-conventions.md](references/naming-api-conventions.md)
+- **Documentation standards + ADR format**: [doc-standards.md](references/doc-standards.md)
+- **Language adaptation (C++, TS, Python, Go, Rust, Java)**: [language-adaptation.md](references/language-adaptation.md)
+- **Index maintenance (Tier A/B triggers)**: [index-maintenance.md](references/index-maintenance.md)

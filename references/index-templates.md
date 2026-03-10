@@ -2,6 +2,8 @@
 
 Copy-paste ready templates for each level of the progressive disclosure index. All templates are language-agnostic — replace `[ext]` placeholders with your language's file extension.
 
+**Information placement (Lost in the Middle)**: Place high-priority content (Build, Quick Navigation, Agent Workflow) at the start or end of files. LLMs attend less to the middle of long context — keep critical routing/checklist sections near the top or bottom.
+
 ## L0: AGENTS.md Template
 
 ```markdown
@@ -15,8 +17,10 @@ Copy-paste ready templates for each level of the progressive disclosure index. A
 
 ## Directory Map
 
+<!-- Typical Web app layout; adapt to project: app/, packages/, layers/, monorepo sub-packages, etc. -->
+
 \```
-src/              # (or include/ + src/ for C/C++)
+src/              # (or include/ + src/ for C/C++; or app/, packages/, etc.)
 ├── api/          # [Purpose: external interface layer]
 ├── core/         # [Purpose: business logic and domain models]
 ├── infra/        # [Purpose: database, cache, external services]
@@ -27,8 +31,8 @@ tests/
 ├── integration/  # Integration tests
 └── e2e/          # End-to-end tests
 docs/
-├── adr/          # Architecture Decision Records
-└── api/          # API reference
+├── adr/          # Architecture Decision Records (optional — omit if not using ADRs)
+└── api/          # API reference (or equivalent)
 \```
 
 ## Quick Navigation
@@ -55,12 +59,12 @@ docs/
 - **Files**: [naming-convention], under 300 lines, one concept per file
 - **Tests**: co-located or mirrored in `tests/`
 - **Naming**: see `docs/conventions.md`
-- **Dependencies**: inward direction only (ui → core → infra)
+- **Dependencies**: inward direction only (presentation → domain → infra; example: ui → core → infra)
 
 ## Architectural Constraints
 
-- Dependency direction: ui/ → core/ → infra/ (never reverse)
-- All external calls (HTTP, DB, cache) go through `src/infra/`
+- Dependency direction: presentation → domain → infra (never reverse). Example: ui/ → core/ → infra/ — adapt to your layout.
+- All external calls (HTTP, DB, cache) go through infrastructure layer — e.g. `src/infra/` or `[your-infra-path]/`
 - [Add project-specific constraints]
 
 ## Cross-Cutting Patterns
@@ -98,11 +102,54 @@ When modifying code:
 2. Update this `AGENTS.md` if modules or navigation entries change
 3. Update `INDEX.md` Dependents/Dependencies if call relationships change
 4. Do NOT touch any file under `docs/` — defer to iteration-end sync
+
+## Agent Workflow (Read Before Edit)
+
+**Checklist-at-END — complete before any code modification:**
+
+- [ ] Locate target module via Quick Navigation table
+- [ ] Open module `INDEX.md` and check Dependents before modifying public API
+- [ ] Confirm Modification Risk before signature/error-type changes
+- [ ] Run Tests section commands before finishing
 ```
+
+## Index Exclusions (Optional)
+
+Create `.cursorignore` at project root (same syntax as `.gitignore`) to exclude from AI indexing. Recommended for large repos and monorepos.
+
+Common exclusions (adapt to your ecosystem):
+
+```
+# Dependencies
+node_modules/
+vendor/
+.pnp/
+
+# Build output
+dist/
+build/
+.next/
+out/
+target/
+
+# Generated / cache
+*.generated.ts
+*.generated.js
+__pycache__/
+prisma/generated/
+graphql/generated/
+coverage/
+```
+
+Excluding these can reduce indexing time significantly. Add project-specific paths (e.g. `packages/*/dist/` for monorepos). Consider opening specific packages as multi-root workspaces rather than indexing the entire repo.
 
 ## L0: llms.txt Template
 
-Use `llms.txt` for **web-accessible projects** (published libraries, SaaS APIs, open-source projects with docs sites) where external AI agents discover your project via URL. `AGENTS.md` is for **local repository navigation** — it is always created. `llms.txt` is optional and only needed when your project has a public-facing documentation URL.
+Use `llms.txt` for **web-accessible projects** (published libraries, SaaS APIs, open-source projects with docs sites) where external AI agents discover your project via URL.
+
+**Division of labor**:
+- **llms.txt**: Discovery entry — placed at site/project root (`/llms.txt`); helps agents find key resources when browsing. Optional `llms-full.txt` for detailed docs.
+- **AGENTS.md**: Local repo execution context — build commands, navigation, conventions. Always create for local development. Agents read the nearest `AGENTS.md` when editing.
 
 ```markdown
 # [Project Name]
@@ -124,12 +171,42 @@ Use `llms.txt` for **web-accessible projects** (published libraries, SaaS APIs, 
 
 ## L1: Module INDEX.md Template (Tier A — Real-time)
 
+**Path convention**: Use repo-root-relative paths (e.g. `src/auth/authenticate.ts`) in all Dependencies and Dependents. Avoid `./`, `../` for clarity and Voice Coding compatibility.
+
+**Section order**: Place Dependents, Modification Risk, Task Routing near the top or bottom — high-value for AI navigation; avoid burying in the middle (Lost in the Middle).
+
 ```markdown
 # Module: [module-name]
 
 [One-sentence: what this module is responsible for.]
 
 Status: [stable | active | deprecated | experimental] | Fan-in: [N] | Fan-out: [N]
+
+## Dependents (Fan-in: [N])
+
+<!-- Prefer structural navigation via this list over semantic search. Use repo-root-relative paths. -->
+<!-- Optional edge type: [imports] | [inherits] | [instantiates] per line -->
+<!-- Discovery: grep -rn "from [this_module]" . or grep -rn "import [this_module]" . -->
+<!-- If Fan-in > 10, group by parent module instead of listing individual files -->
+
+- `[src/module-x]` → [which function/class it calls]
+- `[src/module-y]` → [which function/class it calls]
+- `[src/module-z]` → [which function/class it calls]
+
+## Modification Risk
+
+- [Change type A] → [compatible | BREAKING], [impact description]
+- [Change type B] → [compatible | BREAKING], [impact description]
+- [Change type C] → [compatible | BREAKING], [impact description]
+
+## Task Routing
+
+<!-- Maps natural-language tasks to files; supports Voice Coding "say task → get path" -->
+
+- [Common task 1] → modify `[repo-relative/path/file]`, [brief note]
+- [Common task 2] → modify `[repo-relative/path/file]`, [brief note]
+- [Common task 3] → modify `[repo-relative/path/file]`, [brief note]
+- [Common task 4] → modify `[repo-relative/path/file]`, [brief note]
 
 ## Public API
 
@@ -147,20 +224,14 @@ Status: [stable | active | deprecated | experimental] | Fan-in: [N] | Fan-out: [
 | `[file-2]` | ~[N] | [Brief purpose] |
 | `[file-3]` | ~[N] | [Brief purpose] |
 <!-- Flag oversized files: | `big_file.py` | ⚠ ~1066 | [Purpose] — needs split | -->
+<!-- For files >300 LOC, add @lines or @range in L2 header to guide partial reads -->
 
 ## Dependencies (Fan-out: [N])
 
+<!-- Use repo-root-relative paths. Optional: [imports] | [inherits] | [instantiates] per line -->
+
 - `[src/module-a]` — [why this module depends on it]
 - `[src/module-b]` — [why this module depends on it]
-
-## Dependents (Fan-in: [N])
-
-<!-- Discovery: grep -rn "from [this_module]" . or grep -rn "import [this_module]" . -->
-<!-- If Fan-in > 10, group by parent module instead of listing individual files -->
-
-- `[src/module-x]` → [which function/class it calls]
-- `[src/module-y]` → [which function/class it calls]
-- `[src/module-z]` → [which function/class it calls]
 
 ## Interface Contract
 
@@ -168,19 +239,6 @@ Status: [stable | active | deprecated | experimental] | Fan-in: [N] | Fan-out: [
 - [function_b()]: [return guarantee] or [error condition]
 - Side effects: [list any state changes beyond return values]
 - Thread safety: [safe | unsafe | specific details]
-
-## Modification Risk
-
-- [Change type A] → [compatible | BREAKING], [impact description]
-- [Change type B] → [compatible | BREAKING], [impact description]
-- [Change type C] → [compatible | BREAKING], [impact description]
-
-## Task Routing
-
-- [Common task 1] → modify [file], [brief note]
-- [Common task 2] → modify [file], [brief note]
-- [Common task 3] → modify [file], [brief note]
-- [Common task 4] → modify [file], [brief note]
 
 ## Tests
 
@@ -438,8 +496,9 @@ package name
 | `@sideeffect` | Non-return state changes | `@sideeffect writes audit_log` |
 | `@threadsafe` | Concurrency guarantee | `@threadsafe` |
 | `@performance` | Latency/throughput | `@performance < 50ms p99` |
+| `@lines` / `@range` | Key line ranges for large files (>300 LOC) | `@lines 45-89 main logic`, `@range 120-180 parsing` |
 
-**Rule of thumb**: If a function is only called within its own module, skip contract annotations. If it's called from other modules, add them — the AI needs these to assess modification safety.
+**Rule of thumb**: If a function is only called within its own module, skip contract annotations. If it's called from other modules, add them — the AI needs these to assess modification safety. For oversized files, `@lines` guides agents to partial reads instead of loading the whole file.
 
 ## Docs Directory INDEX.md Template (Tier B — Iteration-End)
 
@@ -462,6 +521,8 @@ package name
 ```
 
 ## ADR INDEX.md Template (Tier B — Iteration-End)
+
+*ADR is optional. Use when your project tracks architecture decisions formally; omit `adr/` if not.*
 
 ```markdown
 # Architecture Decision Records

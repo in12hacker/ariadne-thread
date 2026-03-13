@@ -170,13 +170,15 @@ Status: stable | Fan-in: 5 | Fan-out: 2
 
 **Why each section matters for AI:**
 
-| Section | AI Question It Answers | Token Savings |
-|---------|----------------------|---------------|
-| **Dependents** | "Who calls me? What breaks if I change?" | Avoids full-project grep (~800 tokens) |
-| **Interface Contract** | "What invariants must I preserve?" | Avoids re-reading callers to infer constraints (~400 tokens) |
-| **Modification Risk** | "Is this change safe? How many files to update?" | Avoids under-estimating blast radius |
-| **Task Routing** | "Which file should I edit for this task?" | Avoids reading wrong files (~600 tokens) |
-| **Tests** | "What should I run to verify?" | Avoids searching for test files (~200 tokens) |
+| Section | AI Question It Answers | What it replaces |
+|---------|----------------------|-----------------|
+| **Dependents** | "Who calls me? What breaks if I change?" | Full-project grep to discover callers |
+| **Interface Contract** | "What invariants must I preserve?" | Re-reading caller files to infer constraints |
+| **Modification Risk** | "Is this change safe? How many files to update?" | Underestimating blast radius and missing dependents |
+| **Task Routing** | "Which file should I edit for task X?" | Reading wrong files before finding the right one |
+| **Tests** | "What should I run to verify?" | Searching for test files across the project |
+
+The actual token savings depend heavily on project size and how the AI handles uncertainty — they scale with the number of modules and files. The value is real but varies; don't treat any specific number as a guarantee.
 
 For the full INDEX.md template, see [index-templates.md](references/index-templates.md).
 
